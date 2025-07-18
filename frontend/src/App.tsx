@@ -1,30 +1,240 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { useAuth } from './store';
+import { authAPI } from './services/api';
+
+// Layout Components
+import Layout from './components/Layout';
+import AuthLayout from './components/AuthLayout';
+
+// Pages
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
+import Dashboard from './pages/Dashboard';
+import StudyMaterial from './pages/StudyMaterial';
+import ContentViewer from './pages/ContentViewer';
+import DoubtsPage from './pages/DoubtsPage';
+import DoubtDetail from './pages/DoubtDetail';
+import CreateDoubt from './pages/CreateDoubt';
+import TestsPage from './pages/TestsPage';
+import TestViewer from './pages/TestViewer';
+import AITools from './pages/AITools';
+import PYQAnalyzer from './pages/PYQAnalyzer';
+import Profile from './pages/Profile';
+import Leaderboard from './pages/Leaderboard';
+import Settings from './pages/Settings';
+import NotFound from './pages/NotFound';
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
+
+// Protected Route component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Public Route component (redirect to dashboard if already authenticated)
+const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+};
 
 function App() {
+  const { setUser, setToken, setLoading, logout } = useAuth();
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        setLoading(true);
+        try {
+          const response = await authAPI.getMe();
+          setUser(response.data.data.user);
+          setToken(token);
+        } catch (error) {
+          console.error('Auth initialization failed:', error);
+          logout();
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+  }, [setUser, setToken, setLoading, logout]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 flex flex-col items-center justify-center">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-blue-700 mb-2 text-center">Concept Master</h1>
-        <p className="text-center text-gray-600 mb-6">Learn Smart. Crack Easy.</p>
-        <div className="flex flex-col gap-4">
-          <button className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">Login with OTP</button>
-          <div className="bg-blue-50 rounded p-4 text-center">
-            <span className="font-semibold text-blue-700">Demo:</span> 1 week free access
-          </div>
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <div className="min-h-screen bg-gray-50">
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={
+              <PublicRoute>
+                <LandingPage />
+              </PublicRoute>
+            } />
+            <Route path="/login" element={
+              <PublicRoute>
+                <AuthLayout>
+                  <LoginPage />
+                </AuthLayout>
+              </PublicRoute>
+            } />
+            
+            {/* Protected routes */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/study" element={
+              <ProtectedRoute>
+                <Layout>
+                  <StudyMaterial />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/study/:id" element={
+              <ProtectedRoute>
+                <Layout>
+                  <ContentViewer />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/doubts" element={
+              <ProtectedRoute>
+                <Layout>
+                  <DoubtsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/doubts/create" element={
+              <ProtectedRoute>
+                <Layout>
+                  <CreateDoubt />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/doubts/:id" element={
+              <ProtectedRoute>
+                <Layout>
+                  <DoubtDetail />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/tests" element={
+              <ProtectedRoute>
+                <Layout>
+                  <TestsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/tests/:id" element={
+              <ProtectedRoute>
+                <Layout>
+                  <TestViewer />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/ai-tools" element={
+              <ProtectedRoute>
+                <Layout>
+                  <AITools />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/pyq-analyzer" element={
+              <ProtectedRoute>
+                <Layout>
+                  <PYQAnalyzer />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Profile />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/leaderboard" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Leaderboard />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Settings />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            {/* 404 route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          
+          {/* Global toast notifications */}
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+              },
+              success: {
+                style: {
+                  background: '#059669',
+                },
+              },
+              error: {
+                style: {
+                  background: '#DC2626',
+                },
+              },
+            }}
+          />
         </div>
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Dashboard Preview</h2>
-          <ul className="space-y-2">
-            <li className="flex items-center gap-2"><span className="text-blue-500">📊</span> Learning Progress</li>
-            <li className="flex items-center gap-2"><span className="text-purple-500">📆</span> Upcoming Tests</li>
-            <li className="flex items-center gap-2"><span className="text-yellow-500">📌</span> Bookmarked Chapters</li>
-            <li className="flex items-center gap-2"><span className="text-green-500">🧠</span> Recent AI Explanations</li>
-            <li className="flex items-center gap-2"><span className="text-pink-500">🧪</span> Weekly Challenge</li>
-          </ul>
-        </div>
-      </div>
-      <footer className="mt-8 text-gray-400 text-xs">&copy; {new Date().getFullYear()} Concept Master</footer>
-    </div>
+      </Router>
+    </QueryClientProvider>
   );
 }
 
