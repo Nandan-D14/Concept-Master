@@ -2,88 +2,28 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
-const { sendOTP, verifyOTP } = require('../utils/otpService');
-const { auth } = require('../middleware/auth');
+const { auth } = require('../middleware/auth'); // Keep auth middleware
 
 const router = express.Router();
 
-// Store OTPs in memory (in production, use Redis)
-const otpStore = new Map();
-
-// Generate OTP
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
-// @route   POST /api/auth/send-otp
-// @desc    Send OTP to phone number
+// @route   POST /api/auth/register
+// @desc    Register user with email and password
 // @access  Public
-router.post('/send-otp', [
-  body('phone')
-    .matches(/^[6-9]\d{9}$/)
-    .withMessage('Please enter a valid 10-digit phone number')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
-
-    const { phone } = req.body;
-    const otp = generateOTP();
-
-    // Store OTP with expiration (5 minutes)
-    otpStore.set(phone, {
-      otp,
-      expires: Date.now() + 5 * 60 * 1000,
-      attempts: 0
-    });
-
-    // In production, integrate with SMS service (like Twilio, AWS SNS, etc.)
-    // For now, we'll just log the OTP
-    console.log(`OTP for ${phone}: ${otp}`);
-
-    // For demo purposes, we'll send the OTP in response
-    // In production, remove this and only send success message
-    res.json({
-      success: true,
-      message: 'OTP sent successfully',
-      otp: process.env.NODE_ENV === 'development' ? otp : undefined
-    });
-
-  } catch (error) {
-    console.error('Send OTP error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to send OTP'
-    });
-  }
-});
-
-// @route   POST /api/auth/verify-otp
-// @desc    Verify OTP and login/register user
-// @access  Public
-router.post('/verify-otp', [
-  body('phone')
-    .matches(/^[6-9]\d{9}$/)
-    .withMessage('Please enter a valid 10-digit phone number'),
-  body('otp')
-    .isLength({ min: 6, max: 6 })
-    .withMessage('OTP must be 6 digits'),
+router.post('/register', [
   body('name')
-    .optional()
     .isLength({ min: 2, max: 50 })
     .withMessage('Name must be between 2 and 50 characters'),
+  body('email')
+    .isEmail()
+    .withMessage('Please enter a valid email')
+    .normalizeEmail(),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long'),
   body('class')
-    .optional()
     .isInt({ min: 1, max: 12 })
     .withMessage('Class must be between 1 and 12'),
   body('board')
-    .optional()
     .isIn(['CBSE', 'ICSE', 'State'])
     .withMessage('Board must be CBSE, ICSE, or State')
 ], async (req, res) => {
@@ -97,81 +37,112 @@ router.post('/verify-otp', [
       });
     }
 
-    const { phone, otp, name, class: studentClass, board, email } = req.body;
+    const { name, email, password, class: studentClass, board, state } = req.body;
 
-    // Check if OTP exists and is valid
-    const otpData = otpStore.get(phone);
-    if (!otpData) {
+    let user = await User.findOne({ email });
+    if (user) {
       return res.status(400).json({
         success: false,
-        message: 'OTP not found or expired'
+        message: 'User with this email already exists'
       });
     }
 
-    // Check if OTP is expired
-    if (Date.now() > otpData.expires) {
-      otpStore.delete(phone);
-      return res.status(400).json({
-        success: false,
-        message: 'OTP expired'
-      });
-    }
+    user = new User({
+      name,
+      email,
+      password,
+      class: studentClass,
+      board,
+      state,
+      isVerified: true // Assuming email verification is handled later or not required for initial registration
+    });
 
-    // Check attempt limit
-    if (otpData.attempts >= 3) {
-      otpStore.delete(phone);
-      return res.status(400).json({
-        success: false,
-        message: 'Too many failed attempts'
-      });
-    }
-
-    // Verify OTP
-    if (otpData.otp !== otp) {
-      otpData.attempts++;
-      otpStore.set(phone, otpData);
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid OTP'
-      });
-    }
-
-    // OTP is valid, remove from store
-    otpStore.delete(phone);
-
-    // Check if user exists
-    let user = await User.findOne({ phone });
-
-    if (!user) {
-      // Register new user
-      if (!name || !studentClass || !board) {
-        return res.status(400).json({
-          success: false,
-          message: 'Name, class, and board are required for registration'
-        });
-      }
-
-      user = new User({
-        phone,
-        name,
-        class: studentClass,
-        board,
-        email,
-        isVerified: true
-      });
-
-      await user.save();
-    } else {
-      // Update existing user's last login
-      user.lastLogin = new Date();
-      await user.save();
-    }
+    await user.save();
 
     // Generate JWT token
     const token = jwt.sign(
       { 
         userId: user._id,
-        phone: user.phone,
+        email: user.email, // Use email in payload
+        role: user.role
+      },
+      process.env.JWT_SECRET || 'fallback-secret',
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        class: user.class,
+        board: user.board,
+        subscription: user.subscription,
+        role: user.role,
+        progress: user.progress
+      }
+    });
+
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during registration'
+    });
+  }
+});
+
+// @route   POST /api/auth/login
+// @desc    Login user with email and password
+// @access  Public
+router.post('/login', [
+  body('email')
+    .isEmail()
+    .withMessage('Please enter a valid email')
+    .normalizeEmail(),
+  body('password')
+    .exists()
+    .withMessage('Password is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { email, password } = req.body;
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        userId: user._id,
+        email: user.email, // Use email in payload
         role: user.role
       },
       process.env.JWT_SECRET || 'fallback-secret',
@@ -180,15 +151,14 @@ router.post('/verify-otp', [
 
     res.json({
       success: true,
-      message: user.isNew ? 'Registration successful' : 'Login successful',
+      message: 'Login successful',
       token,
       user: {
         id: user._id,
-        phone: user.phone,
         name: user.name,
+        email: user.email,
         class: user.class,
         board: user.board,
-        email: user.email,
         subscription: user.subscription,
         role: user.role,
         progress: user.progress
@@ -196,20 +166,119 @@ router.post('/verify-otp', [
     });
 
   } catch (error) {
-    console.error('Verify OTP error:', error);
+    console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to verify OTP'
+      message: 'Server error during login'
     });
   }
 });
+
+// @route   POST /api/auth/google
+// @desc    Authenticate user with Google (Register/Login)
+// @access  Public
+router.post('/google', [
+  body('idToken')
+    .exists()
+    .withMessage('Google ID token is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { idToken } = req.body;
+
+    // Verify Google ID token (using firebase-admin or google-auth-library)
+    // For simplicity, we'll assume a valid token and extract user info.
+    // In a real app, you'd use: admin.auth().verifyIdToken(idToken)
+    // For now, we'll mock the token verification and user data extraction.
+    // This part needs actual implementation with a Google Auth Library.
+    const decodedToken = {
+      email: 'google.user@example.com', // Replace with actual decoded email
+      name: 'Google User', // Replace with actual decoded name
+      sub: 'google_user_id_123' // Google user ID (unique identifier)
+    };
+
+    // Check if user exists by googleId
+    let user = await User.findOne({ googleId: decodedToken.sub });
+    let isNewUser = false;
+
+    if (!user) {
+      // Check if user exists by email (if they previously registered with email/password)
+      user = await User.findOne({ email: decodedToken.email });
+      if (user) {
+        // Link Google account to existing email account
+        user.googleId = decodedToken.sub;
+        await user.save();
+      } else {
+        // Register new user with Google info
+        isNewUser = true;
+        user = new User({
+          name: decodedToken.name,
+          email: decodedToken.email,
+          googleId: decodedToken.sub,
+          isVerified: true,
+          // Default values for class and board for new Google users
+          // In a real app, you might prompt them for this info on first login
+          class: 10, // Default class
+          board: 'CBSE' // Default board
+        });
+        await user.save();
+      }
+    }
+
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        userId: user._id,
+        email: user.email, // Use email in payload
+        role: user.role
+      },
+      process.env.JWT_SECRET || 'fallback-secret',
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      message: isNewUser ? 'Google registration successful' : 'Google login successful',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        class: user.class,
+        board: user.board,
+        subscription: user.subscription,
+        role: user.role,
+        progress: user.progress
+      }
+    });
+
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to authenticate with Google'
+    });
+  }
+});
+
 
 // @route   GET /api/auth/me
 // @desc    Get current user
 // @access  Private
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select('-__v');
+    const user = await User.findById(req.user.userId).select('-__v -password'); // Exclude password
     
     if (!user) {
       return res.status(404).json({
@@ -222,11 +291,10 @@ router.get('/me', auth, async (req, res) => {
       success: true,
       user: {
         id: user._id,
-        phone: user.phone,
         name: user.name,
+        email: user.email,
         class: user.class,
         board: user.board,
-        email: user.email,
         subscription: user.subscription,
         role: user.role,
         progress: user.progress,
@@ -284,7 +352,7 @@ router.post('/refresh', auth, async (req, res) => {
     const token = jwt.sign(
       { 
         userId: user._id,
-        phone: user.phone,
+        email: user.email, // Use email in payload
         role: user.role
       },
       process.env.JWT_SECRET || 'fallback-secret',
@@ -318,7 +386,14 @@ router.post('/update-profile', [
   body('email')
     .optional()
     .isEmail()
-    .withMessage('Please enter a valid email'),
+    .withMessage('Please enter a valid email')
+    .custom(async (value, { req }) => {
+      const user = await User.findOne({ email: value });
+      if (user && user._id.toString() !== req.user.userId) {
+        throw new Error('This email is already in use');
+      }
+      return true;
+    }),
   body('class')
     .optional()
     .isInt({ min: 1, max: 12 })
@@ -364,11 +439,10 @@ router.post('/update-profile', [
       message: 'Profile updated successfully',
       user: {
         id: user._id,
-        phone: user.phone,
         name: user.name,
+        email: user.email,
         class: user.class,
         board: user.board,
-        email: user.email,
         state: user.state,
         preferences: user.preferences
       }

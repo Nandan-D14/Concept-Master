@@ -44,11 +44,11 @@ api.interceptors.response.use(
 // Types
 export interface User {
   id: string;
-  phone: string;
+  email: string;
   name: string;
   class: number;
   board: string;
-  email?: string;
+  googleId?: string;
   subscription: {
     type: string;
     startDate: string;
@@ -83,15 +83,6 @@ export interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T;
-}
-
-export interface LoginData {
-  phone: string;
-  otp: string;
-  name?: string;
-  class?: number;
-  board?: string;
-  email?: string;
 }
 
 export interface Content {
@@ -165,11 +156,25 @@ export interface Test {
 
 // Auth API
 export const authAPI = {
-  sendOTP: (phone: string): Promise<AxiosResponse<ApiResponse<{ otp?: string }>>> =>
-    api.post('/auth/send-otp', { phone }),
+  register: (data: {
+    name: string;
+    email: string;
+    password?: string; // Optional for Google Sign-In
+    class: number;
+    board: string;
+  }): Promise<AxiosResponse<ApiResponse<{ token: string; user: User }>>> =>
+    api.post('/auth/register', data),
 
-  verifyOTP: (data: LoginData): Promise<AxiosResponse<ApiResponse<{ token: string; user: User }>>> =>
-    api.post('/auth/verify-otp', data),
+  login: (data: {
+    email: string;
+    password: string;
+  }): Promise<AxiosResponse<ApiResponse<{ token: string; user: User }>>> =>
+    api.post('/auth/login', data),
+
+  googleLogin: (data: {
+    idToken: string;
+  }): Promise<AxiosResponse<ApiResponse<{ token: string; user: User }>>> =>
+    api.post('/auth/google', data),
 
   getMe: (): Promise<AxiosResponse<ApiResponse<{ user: User }>>> =>
     api.get('/auth/me'),
@@ -326,6 +331,9 @@ export const aiAPI = {
     comment?: string
   ): Promise<AxiosResponse<ApiResponse<any>>> =>
     api.post('/ai/feedback', { type, rating, comment }),
+
+  chat: (message: string, history: Array<{ role: string; text: string }>, systemInstruction?: string): Promise<AxiosResponse<ApiResponse<{ response: string }>>> =>
+    api.post('/ai/chat', { message, history, systemInstruction }),
 };
 
 // Tests API

@@ -479,4 +479,72 @@ router.post('/feedback', [
   }
 });
 
+// @route   POST /api/ai/chat
+// @desc    Chat with AI agent
+// @access  Private
+router.post('/chat', [
+  auth,
+  trackActivity,
+  body('message')
+    .isLength({ min: 1, max: 1000 })
+    .withMessage('Message must be between 1 and 1000 characters'),
+  body('history')
+    .isArray()
+    .withMessage('History must be an array'),
+  body('systemInstruction')
+    .optional()
+    .isString()
+    .withMessage('System instruction must be a string')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { message, history, systemInstruction } = req.body;
+
+    // Get user details (optional, but good for context if needed by AI)
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Call the enhanced generateContent from aiService
+    const aiResponse = await aiService.generateContent(
+      message,
+      history,
+      systemInstruction
+    );
+
+    // Award XP for AI chat usage
+    await user.addXP(3, 'AI Chat Usage');
+
+    res.json({
+      success: true,
+      message: 'AI response generated successfully',
+      data: {
+        response: aiResponse
+      }
+    });
+
+  } catch (error) {
+    console.error('AI Chat error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get AI response',
+      data: {
+        response: "I'm sorry, I'm having trouble responding right now. Please try again later."
+      }
+    });
+  }
+});
+
 module.exports = router;

@@ -6,20 +6,32 @@ class AIService {
     this.geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
   }
 
-  async generateContent(prompt, context = {}) {
+  async generateContent(prompt, history = [], systemInstruction = null) {
     try {
       if (!this.geminiApiKey) {
         throw new Error('Gemini API key not configured');
       }
 
+      const contents = [];
+
+      // Add system instruction if provided
+      if (systemInstruction) {
+        contents.push({ role: 'user', parts: [{ text: systemInstruction }] });
+        contents.push({ role: 'model', parts: [{ text: 'Okay, I understand.' }] }); // Acknowledge system instruction
+      }
+
+      // Add historical messages
+      history.forEach(msg => {
+        contents.push({ role: msg.role, parts: [{ text: msg.text }] });
+      });
+
+      // Add current prompt
+      contents.push({ role: 'user', parts: [{ text: prompt }] });
+
       const response = await axios.post(
         `${this.geminiApiUrl}?key=${this.geminiApiKey}`,
         {
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
+          contents: contents,
           generationConfig: {
             temperature: 0.7,
             topK: 1,
@@ -84,7 +96,7 @@ Format your response as JSON with these keys: simplified, example, keyPoints, de
       const response = await this.generateContent(prompt);
       return this.parseJSONResponse(response);
     } catch (error) {
-      // Fallback response if AI fails
+      // Fallback response
       return {
         simplified: text,
         example: "Example not available",

@@ -4,13 +4,16 @@ import './index.css';
 import App from './App';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import reportWebVitals from './reportWebVitals';
+import { ThemeProvider } from './lib/theme-provider'; // Import ThemeProvider
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 root.render(
   <React.StrictMode>
-    <App />
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme"> {/* Wrap App with ThemeProvider */}
+      <App />
+    </ThemeProvider>
   </React.StrictMode>
 );
 

@@ -6,12 +6,13 @@ import { useAuth } from './store';
 import { authAPI } from './services/api';
 
 // Layout Components
-import Layout from './components/Layout';
+import NewLayout from './components/NewLayout';
 import AuthLayout from './components/AuthLayout';
 
 // Pages
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage'; // Import RegisterPage
 import Dashboard from './pages/Dashboard';
 import StudyMaterial from './pages/StudyMaterial';
 import ContentViewer from './pages/ContentViewer';
@@ -20,7 +21,7 @@ import DoubtDetail from './pages/DoubtDetail';
 import CreateDoubt from './pages/CreateDoubt';
 import TestsPage from './pages/TestsPage';
 import TestViewer from './pages/TestViewer';
-import AITools from './pages/AITools';
+import AIStudio from './pages/AIStudio';
 import PYQAnalyzer from './pages/PYQAnalyzer';
 import Profile from './pages/Profile';
 import Leaderboard from './pages/Leaderboard';
@@ -40,22 +41,22 @@ const queryClient = new QueryClient({
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
-  
+
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
 // Public Route component (redirect to dashboard if already authenticated)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
-  
+
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
@@ -86,7 +87,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-background"> {/* Corrected background */}
           <Routes>
             {/* Public routes */}
             <Route path="/" element={
@@ -101,116 +102,123 @@ function App() {
                 </AuthLayout>
               </PublicRoute>
             } />
-            
+            <Route path="/register" element={
+              <PublicRoute>
+                <AuthLayout>
+                  <RegisterPage />
+                </AuthLayout>
+              </PublicRoute>
+            } />
+
             {/* Protected routes */}
             <Route path="/dashboard" element={
               <ProtectedRoute>
-                <Layout>
+                <NewLayout> {/* Corrected component */}
                   <Dashboard />
-                </Layout>
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/study" element={
               <ProtectedRoute>
-                <Layout>
+                <NewLayout> {/* Corrected component */}
                   <StudyMaterial />
-                </Layout>
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/study/:id" element={
               <ProtectedRoute>
-                <Layout>
+                <NewLayout> {/* Corrected component */}
                   <ContentViewer />
-                </Layout>
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/doubts" element={
               <ProtectedRoute>
-                <Layout>
+                <NewLayout> {/* Corrected component */}
                   <DoubtsPage />
-                </Layout>
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/doubts/create" element={
               <ProtectedRoute>
-                <Layout>
+                <NewLayout> {/* Corrected component */}
                   <CreateDoubt />
-                </Layout>
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/doubts/:id" element={
               <ProtectedRoute>
-                <Layout>
+                <NewLayout> {/* Corrected component */}
                   <DoubtDetail />
-                </Layout>
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/tests" element={
               <ProtectedRoute>
-                <Layout>
+                <NewLayout> {/* Corrected component */}
                   <TestsPage />
-                </Layout>
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/tests/:id" element={
               <ProtectedRoute>
-                <Layout>
+                <NewLayout> {/* Corrected component */}
                   <TestViewer />
-                </Layout>
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
-            <Route path="/ai-tools" element={
+
+            <Route path="/ai-studio" element={
               <ProtectedRoute>
-                <Layout>
-                  <AITools />
-                </Layout>
+                <NewLayout> {/* Corrected component */}
+                  <AIStudio /> {/* Corrected component */}
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/pyq-analyzer" element={
               <ProtectedRoute>
-                <Layout>
+                <NewLayout> {/* Corrected component */}
                   <PYQAnalyzer />
-                </Layout>
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/profile" element={
               <ProtectedRoute>
-                <Layout>
+                <NewLayout> {/* Corrected component */}
                   <Profile />
-                </Layout>
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/leaderboard" element={
               <ProtectedRoute>
-                <Layout>
+                <NewLayout> {/* Corrected component */}
                   <Leaderboard />
-                </Layout>
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/settings" element={
               <ProtectedRoute>
-                <Layout>
+                <NewLayout> {/* Corrected component */}
                   <Settings />
-                </Layout>
+                </NewLayout>
               </ProtectedRoute>
             } />
-            
+
             {/* 404 route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-          
+
           {/* Global toast notifications */}
           <Toaster
             position="top-right"

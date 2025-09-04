@@ -1,16 +1,22 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
-  phone: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true
-  },
   email: {
     type: String,
+    required: function() { return !this.googleId; }, // Required if not signing in with Google
+    unique: true,
     trim: true,
     lowercase: true
+  },
+  password: {
+    type: String,
+    required: function() { return !this.googleId; } // Required if not signing in with Google
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true // Allows null values to be unique
   },
   name: {
     type: String,
@@ -140,8 +146,22 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Hash password before saving
+userSchema.pre('save', async function(next) {
+  if (this.isModified('password')) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
+  next();
+});
+
+// Compare password method
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
 // Index for better query performance
-userSchema.index({ phone: 1 });
+userSchema.index({ email: 1 });
 userSchema.index({ class: 1, board: 1 });
 userSchema.index({ 'subscription.type': 1, 'subscription.isActive': 1 });
 
@@ -182,3 +202,4 @@ userSchema.methods.getRemainingDays = function() {
 };
 
 module.exports = mongoose.model('User', userSchema);
+
