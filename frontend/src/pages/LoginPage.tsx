@@ -43,12 +43,12 @@ const LoginPage: React.FC = () => {
           email: data.email,
           password: data.password,
           name: data.name!,
-          class: data.class!.toString(),
+          class: data.class!,
           board: data.board!,
         });
         
-        if (response.data.success) {
-          const { token, user } = response.data.data;
+        if (response.success) {
+          const { token, user } = response.data;
           setUser(user);
           setToken(token);
           localStorage.setItem('token', token);
@@ -63,8 +63,8 @@ const LoginPage: React.FC = () => {
           password: data.password,
         });
         
-        if (response.data.success) {
-          const { token, user } = response.data.data;
+        if (response.success) {
+          const { token, user } = response.data;
           setUser(user);
           setToken(token);
           localStorage.setItem('token', token);
@@ -87,8 +87,8 @@ const LoginPage: React.FC = () => {
       // Simulate Google Sign-In
       const response = await mockAPI.auth.googleSignIn();
       
-      if (response.data.success) {
-        const { token, user } = response.data.data;
+      if (response.success) {
+        const { token, user } = response.data;
         setUser(user);
         setToken(token);
         localStorage.setItem('token', token);
@@ -354,4 +354,3 @@ const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
-

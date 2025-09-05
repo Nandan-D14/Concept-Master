@@ -2,75 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 220 13% 13%;
+/* http://meyerweb.com/eric/tools/css/reset/ 
+	v2.0 | 20110126
+	License: none (public domain)
+*/
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 13% 13%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 13% 13%;
-
-    --primary: 220 80% 40%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 210 20% 95%;
-    --secondary-foreground: 220 13% 13%;
-
-    --muted: 210 20% 95%;
-    --muted-foreground: 215 10% 40%;
-
-    --accent: 210 20% 95%;
-    --accent-foreground: 220 13% 13%;
-
-    --destructive: 0 80% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 210 10% 90%;
-    --input: 210 10% 90%;
-    --ring: 220 80% 40%;
-
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 220 13% 13%;
-    --foreground: 210 40% 98%;
-
-    --card: 220 13% 13%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 220 13% 13%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 220 80% 60%;
-    --primary-foreground: 220 13% 13%;
-
-    --secondary: 217 20% 20%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217 20% 20%;
-    --muted-foreground: 215 10% 60%;
-
-    --accent: 217 20% 20%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 80% 60%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217 10% 25%;
-    --input: 217 10% 25%;
-    --ring: 220 80% 60%;
-  }
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 100%;
+	font: inherit;
+	vertical-align: baseline;
 }
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, 
+footer, header, hgroup, menu, nav, section {
+	display: block;
+}
+body {
+	line-height: 1;
+}
+ol, ul {
+	list-style: none;
+}
+blockquote, q {
+	quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+	content: '';
+	content: none;
+}
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
 }
